@@ -22,14 +22,12 @@ from fancy_catalog import create_catalog
 # NOTE the .v1 -- see "Passing a Stripe client" below.
 catalog = create_catalog(stripe=stripe.StripeClient(api_key).v1)
 
-pro   = catalog.create_product("Pro plan", description="Everything, monthly")
-price = catalog.create_price(pro.id, currency="USD", amount="19.99",
-                             recurring_interval="month")
+pro = catalog.create_product("Pro plan", description="Everything, monthly")
+price = catalog.create_price(pro.id, currency="USD", amount="19.99", recurring_interval="month")
 
-price.unit_amount            # 1999   -- exactly, not 1998
+price.unit_amount  # 1999   -- exactly, not 1998
 catalog.sync_product_and_prices(pro)
-catalog.subscription_checkout_url(price, customer="cus_123",
-                                  success_url="...", cancel_url="...")
+catalog.subscription_checkout_url(price, customer="cus_123", success_url="...", cancel_url="...")
 ```
 
 ## Money is the point
@@ -39,21 +37,21 @@ types a decimal string. **The conversion between them is where money is lost,
 and neither twin owns it** — so every consumer writes it themselves:
 
 ```python
-int(19.99 * 100)      # 1998.  One cent, on every order.
-round(8.615 * 1000)   # 8614.  Rounding does not fix it, it moves it.
+int(19.99 * 100)  # 1998.  One cent, on every order.
+round(8.615 * 1000)  # 8614.  Rounding does not fix it, it moves it.
 ```
 
 ```python
 from fancy_catalog import to_minor_units, format_minor_units, currency_exponent
 
-to_minor_units("19.99", 2)                      # 1999
-to_minor_units("8.615", 3)                      # 8615
+to_minor_units("19.99", 2)  # 1999
+to_minor_units("8.615", 3)  # 8615
 to_minor_units("1000", currency_exponent("JPY"))  # 1000, not 100000
-to_minor_units("1.005", currency_exponent("KWD")) # 1005
-format_minor_units(-7, 2)                       # "-0.07"
+to_minor_units("1.005", currency_exponent("KWD"))  # 1005
+format_minor_units(-7, 2)  # "-0.07"
 
-to_minor_units(19.99, 2)     # TypeError -- a float has already lost it
-to_minor_units("0.005", 2)   # MoneyPrecisionError -- rounds nothing silently
+to_minor_units(19.99, 2)  # TypeError -- a float has already lost it
+to_minor_units("0.005", 2)  # MoneyPrecisionError -- rounds nothing silently
 ```
 
 Pinned by the shared
@@ -72,8 +70,8 @@ reprice failing with "lookup key already exists".
 
 ```python
 price.unit_amount = 2999
-catalog.sync_price(price)     # old price archived, new one created
-price.external_id             # a NEW Stripe id
+catalog.sync_price(price)  # old price archived, new one created
+price.external_id  # a NEW Stripe id
 ```
 
 ## Passing a Stripe client
@@ -112,8 +110,8 @@ features = create_features(
     sources=[create_catalog_feature_source(catalog, resolve_subscription=lookup)],
 )
 
-features.can_access("use-mcp", user)      # via the user's plan's product features
-features.remaining("ai-tokens", user)     # includedQuantity − usage
+features.can_access("use-mcp", user)  # via the user's plan's product features
+features.remaining("ai-tokens", user)  # includedQuantity − usage
 ```
 
 The bridge **imports** the shared contract from `fancy-features` rather than
