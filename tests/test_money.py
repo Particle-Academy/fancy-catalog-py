@@ -28,7 +28,7 @@ SUITE = "shared/money-minor-units"
 
 #: Moved deliberately, never automatically. A pin that follows whatever is on
 #: disk asserts nothing.
-PINNED_SUITE_VERSION = "0.3.0"
+PINNED_SUITE_VERSION = "0.4.0"
 
 _IMPL = {
     "toMinorUnits": lambda i: to_minor_units(i["amount"], i["exponent"]),

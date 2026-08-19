@@ -177,11 +177,23 @@ def test_the_metered_quota_comes_from_the_pivot(catalog, pro_plan) -> None:  # t
     assert features.remaining("ai-tokens", "u") == 60
 
 
-def test_an_exhausted_metered_feature_denies(catalog, pro_plan) -> None:  # type: ignore[no-untyped-def]
+def test_an_exhausted_metered_feature_refuses_consumption_but_stays_entitled(
+    catalog, pro_plan
+) -> None:  # type: ignore[no-untyped-def]
+    """The ruling, through the catalog bridge.
+
+    The last assertion used to be ``is False``. `can_access` answers ENTITLEMENT
+    now: the customer is still paying for the feature, and hiding it at the
+    moment they are spending most on it is the opposite of useful. `can_consume`
+    and `try_consume` carry the quota question.
+    """
     features = _features(catalog, pro_plan.id)
     assert features.try_consume("ai-tokens", "u", 100) is True
     assert features.try_consume("ai-tokens", "u", 1) is False
-    assert features.can_access("ai-tokens", "u") is False
+    assert features.can_consume("ai-tokens", "u", 1) is False
+
+    assert features.can_access("ai-tokens", "u") is True
+    assert features.is_entitled("ai-tokens", "u") is True
 
 
 def test_explain_names_the_product_the_entitlement_came_from(catalog, pro_plan) -> None:  # type: ignore[no-untyped-def]
@@ -286,21 +298,48 @@ def test_a_pivot_row_with_no_included_quantity_is_unlimited(catalog, pro_plan) -
     assert features.can_access("api-calls", "u") is True
 
 
-def test_the_overage_limit_is_carried_but_not_yet_enforced(catalog, pro_plan) -> None:  # type: ignore[no-untyped-def]
-    """``overage_limit`` is stored by all three runtimes and READ BY NONE.
+def test_the_overage_limit_is_carried_and_now_enforced(catalog, pro_plan) -> None:  # type: ignore[no-untyped-def]
+    """This test used to pin ``overage_limit`` as decorative. It is the day.
 
-    It is on the pivot, on the grant and in the contract, and no resolution path
-    in PHP, Node or Python consults it. Pinning that here means the day someone
-    implements it, this test fails and says so -- rather than the field quietly
-    remaining decorative for another year.
+    The field was on the pivot, on the grant and in the contract, and no
+    resolution path in PHP, Node or Python consulted it. The pin existed so that
+    whoever implemented it would be told, rather than the field quietly staying
+    decorative for another year. `fancy-features` 0.2.0 makes it a CEILING on
+    billable consumption past the included quantity.
     """
     feature = catalog.create_product_feature("calls", "Calls", type="resource")
     catalog.attach_feature(
         pro_plan.id, feature.id, enabled=True, included_quantity=10, overage_limit=5
     )
     features = _features(catalog, pro_plan.id)
+    # Overage is permitted only where it can be recorded; the bundled store can,
+    # and a listener is what a host would use to reach an invoice.
+    recorded: list[int] = []
+    features.on_overage(lambda event: recorded.append(event.units))
 
     features.increment("calls", "u", 10)
     assert features.remaining("calls", "u") == 0
-    # If overage were enforced, 5 more would be allowed. It is not.
+
+    # Five billable units above the line, and then the ceiling.
+    assert features.try_consume("calls", "u", 5) is True
+    assert features.overage_for("calls", "u") == 5
+    assert recorded == [5]
     assert features.try_consume("calls", "u", 1) is False
+
+
+def test_an_unset_overage_limit_still_stops_at_the_included_quantity(catalog, pro_plan) -> None:  # type: ignore[no-untyped-def]
+    """The other half, and the one that keeps the ruling opt-in.
+
+    Every pivot row written before this release has ``overage_limit`` unset,
+    because nothing read it. `None` therefore has to mean NO overage: reading it
+    as unbounded would turn each untouched row into an unlimited spending
+    authority the moment this shipped.
+    """
+    feature = catalog.create_product_feature("emails", "Emails", type="resource")
+    catalog.attach_feature(pro_plan.id, feature.id, enabled=True, included_quantity=10)
+    features = _features(catalog, pro_plan.id)
+    features.on_overage(lambda event: None)
+
+    features.increment("emails", "u", 10)
+    assert features.try_consume("emails", "u", 1) is False
+    assert features.overage_for("emails", "u") == 0

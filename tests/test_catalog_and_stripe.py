@@ -75,14 +75,47 @@ def test_create_price_uses_the_currencys_own_exponent(catalog) -> None:  # type:
 
 def test_create_price_refuses_both_amount_forms(catalog) -> None:  # type: ignore[no-untyped-def]
     product = catalog.create_product("Pro plan")
-    with pytest.raises(TypeError, match="exactly one"):
+    with pytest.raises(TypeError, match="at most one"):
         catalog.create_price(product.id, currency="USD", unit_amount=1999, amount="19.99")
 
 
 def test_create_price_refuses_neither_amount_form(catalog) -> None:  # type: ignore[no-untyped-def]
     product = catalog.create_product("Pro plan")
-    with pytest.raises(TypeError, match="exactly one"):
+    with pytest.raises(TypeError, match="needs unit_amount"):
         catalog.create_price(product.id, currency="USD")
+
+
+def test_a_tiered_price_may_have_no_unit_amount_at_all(catalog) -> None:  # type: ignore[no-untyped-def]
+    """Stripe sets none on a tiered price: the tiers carry the money.
+
+    The "neither" guard above is relaxed exactly here and nowhere else, because
+    a price that is neither tiered nor custom and has no amount is still a
+    mistake.
+    """
+    product = catalog.create_product("Metered")
+    price = catalog.create_price(
+        product.id,
+        currency="USD",
+        billing_scheme="tiered",
+        tiers_mode="graduated",
+        tiers=[
+            {"up_to": 1000, "unit_amount": 0},
+            {"up_to": "inf", "unit_amount": 1},
+        ],
+    )
+
+    assert price.unit_amount is None
+
+
+def test_a_custom_amount_price_may_have_no_unit_amount_either(catalog) -> None:  # type: ignore[no-untyped-def]
+    product = catalog.create_product("Pay what you want")
+    price = catalog.create_price(
+        product.id,
+        currency="USD",
+        custom_unit_amount={"enabled": True, "minimum": 500},
+    )
+
+    assert price.unit_amount is None
 
 
 def test_attach_feature_enforces_the_schemas_unique_pair(catalog) -> None:  # type: ignore[no-untyped-def]

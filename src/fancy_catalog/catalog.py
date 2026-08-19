@@ -157,16 +157,31 @@ class Catalog:
         ``amount`` exists because the conversion is where money gets lost and
         neither twin owns it, so every consumer writes ``int(price * 100)`` for
         themselves -- which is wrong for 19.99 and wrong for every JPY price.
+
+        **Give NEITHER for a tiered or custom-amount price.** Stripe sets no unit
+        amount on those: the tiers carry the money, and passing one alongside
+        ``tiers`` is an API error. The "neither" guard below is therefore
+        relaxed exactly there and nowhere else, because a price that is neither
+        tiered nor custom and has no amount is still a mistake.
         """
-        if (unit_amount is None) == (amount is None):
+        carries_its_own_amount = (
+            fields.get("billing_scheme") == "tiered" or fields.get("custom_unit_amount") is not None
+        )
+
+        if unit_amount is not None and amount is not None:
             raise TypeError(
-                "create_price takes exactly one of unit_amount (whole minor units) or "
-                "amount (a decimal string). Passing both invites them to disagree; passing "
-                "neither leaves the price with no amount at all."
+                "create_price takes at most one of unit_amount (whole minor units) or "
+                "amount (a decimal string). Passing both invites them to disagree."
+            )
+        if unit_amount is None and amount is None and not carries_its_own_amount:
+            raise TypeError(
+                "create_price needs unit_amount (whole minor units) or amount (a decimal "
+                'string) -- unless the price is `billing_scheme="tiered"` or has a '
+                "custom_unit_amount, where Stripe sets no unit amount at all and the tiers "
+                "carry the money."
             )
         if amount is not None:
             unit_amount = to_minor_units(amount, currency_exponent(currency))
-        assert unit_amount is not None
 
         price = Price(
             id=fields.pop("id", None) or ulid(),

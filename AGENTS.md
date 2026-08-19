@@ -55,6 +55,13 @@ whether the extra digit is a rounding question or a typo.
 for roughly a quarter of the world's currencies — by a factor of a hundred for
 JPY and a factor of ten for KWD.
 
+**A price may have NO unit amount, and `None` is not zero.** Stripe sets none
+on a `tiered` or `custom_unit_amount` price: the tiers carry the money. It is
+OMITTED from the payload rather than sent as `None` (an API error alongside
+`tiers`) or as 0 (a free price, silently). `create_price` relaxes its
+"needs an amount" guard exactly there and nowhere else. Compare amounts with
+`same_amount`, never `!=`.
+
 **Stripe prices are immutable.** A change to any compared field archives the old
 price (`active: false`) and creates a new one; the shared internal ULID rides in
 `metadata.price_id` so the two stay linked. This is the single most important
@@ -115,7 +122,7 @@ installs nothing extra.
 ## Testing
 
 ```bash
-python -m pytest        # 141 tests, offline, no install required
+python -m pytest        # 150 tests, offline, no install required
 ruff check . && ruff format --check .
 mypy
 ```

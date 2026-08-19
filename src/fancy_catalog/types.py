@@ -117,8 +117,17 @@ class Price:
     id: str
     product_id: str
     currency: str
-    #: The amount in whole minor units. See :mod:`fancy_catalog.money`.
-    unit_amount: int
+    #: The amount in whole minor units, or ``None``. See :mod:`fancy_catalog.money`.
+    #:
+    #: **Nullable**, because Stripe sets NO unit amount on a ``tiered`` or
+    #: ``custom_unit_amount`` price: the tiers carry the money. This package
+    #: models ``tiers``, ``tiers_mode`` and ``custom_unit_amount`` and would
+    #: otherwise make every one of them unrepresentable one field away.
+    #:
+    #: It is omitted from the Stripe payload entirely when ``None`` -- not sent
+    #: as null, which is an API error alongside ``tiers``, and emphatically not
+    #: as 0, which is a free price.
+    unit_amount: int | None = None
     type: PriceType = "recurring"
     active: bool = True
     pricing_model: PricingModel | None = None

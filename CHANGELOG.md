@@ -8,6 +8,48 @@ version number is not a promise it can yet keep; the entries are.
 
 ## [Unreleased]
 
+## [0.2.0] - unreleased
+
+Matches `laravel-catalog` 0.13.0 and `@particle-academy/fancy-catalog` 0.6.0.
+Argument: `.ai/plans/fancy-commerce-gating-rulings.md`.
+
+### Fixed
+
+- **BREAKING: `Price.unit_amount` is `int | None`.** A tiered price could not be
+  represented. Stripe sets **no** unit amount on a `tiered` or
+  `custom_unit_amount` price -- the tiers carry the money -- and this package
+  models `tiers`, `tiers_mode` and `custom_unit_amount`, sends them and compares
+  them on the way back, then made every one of them impossible one field away.
+
+  It is **omitted from the Stripe payload entirely** when `None`: not sent as
+  null, which is an API error alongside `tiers`, and emphatically not as 0,
+  which is a free price.
+
+  `create_price` relaxes its "give exactly one of unit_amount / amount" guard
+  **only** for a tiered or custom-amount price. A price that is neither and has
+  no amount is still a mistake, so it still raises.
+
+  **What to do:** narrow with `?? 0` only where a missing amount genuinely means
+  free -- for a tiered price it does not.
+
+- **`_pricing_changed` compared unit amounts with `!=`.** Prices are immutable,
+  so a false difference archives a live price and creates a replacement -- a
+  churned id and orphaned references, silently. The new exported `same_amount()`
+  normalises to an integer and keeps `None` distinct from `0`: one means "the
+  tiers carry the money", the other means free.
+
+### Changed
+
+- **`overage_limit` is enforced**, by `fancy-features` 0.2.0. It is a **ceiling**
+  on billable consumption past `included_quantity`; this package's job is
+  unchanged -- it populates the field from the pivot.
+
+  `test_the_overage_limit_is_carried_but_not_yet_enforced` existed to fail the
+  day somebody implemented it. It did, and it is now the enforcement test.
+
+- The `shared/money-minor-units` pin moved to `0.4.0` with the fixture cut. A
+  pin that follows whatever is on disk asserts nothing, so it is moved by hand.
+
 ## [0.1.0] - unreleased
 
 The first cut: the domain model, exact money, Stripe sync and checkout, and the

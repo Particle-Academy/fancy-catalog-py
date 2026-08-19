@@ -191,7 +191,6 @@ class StripeCatalogSync:
         params: dict[str, Any] = {
             "product": product.external_id,
             "currency": price.currency.lower(),
-            "unit_amount": price.unit_amount,
             "active": price.active,
             "metadata": {
                 **_stringify_metadata(price.metadata),
@@ -202,6 +201,13 @@ class StripeCatalogSync:
                 "lookup_key": price.lookup_key or "",
             },
         }
+
+        # Sent only when there IS one. Stripe sets no unit amount on a `tiered`
+        # or `custom_unit_amount` price -- the tiers carry the money -- and
+        # passing `unit_amount` alongside `tiers` is an API error. Passing 0
+        # instead would be worse: a free price, silently.
+        if price.unit_amount is not None:
+            params["unit_amount"] = price.unit_amount
 
         # Stripe prices support `lookup_key` NATIVELY, and the metadata copy
         # above is not a substitute: `prices.list(lookup_keys=[...])` reads only
@@ -243,7 +249,7 @@ class StripeCatalogSync:
         recurring interval / count / usage type, billing scheme, tiers mode,
         tiers, transform_quantity and custom_unit_amount.
         """
-        if stripe_get(existing, "unit_amount") != price.unit_amount:
+        if not same_amount(stripe_get(existing, "unit_amount"), price.unit_amount):
             return True
         if stripe_get(existing, "currency") != price.currency.lower():
             return True
@@ -319,3 +325,22 @@ def _stringify_metadata(metadata: Mapping[str, Any] | None) -> dict[str, str]:
             continue
         out[key] = value if isinstance(value, str) else json.dumps(value, sort_keys=True)
     return out
+
+
+def same_amount(a: Any, b: Any) -> bool:
+    """Do two unit amounts mean the same money?
+
+    ``None`` is a real value here -- a tiered or custom-amount price has no unit
+    amount and Stripe returns null for it -- so ``None`` and ``0`` must compare
+    as **different**: one means "the tiers carry the money", the other means
+    free.
+
+    Everything non-null is compared as an integer. The two sides come from
+    different places: a Stripe SDK object hands back an int, a recorded cassette
+    or a JSON fixture may hand back a string. Prices are immutable, so a false
+    difference archives a live price and creates a replacement -- a churned id
+    and orphaned references, silently.
+    """
+    if a is None or b is None:
+        return a is None and b is None
+    return int(a) == int(b)
