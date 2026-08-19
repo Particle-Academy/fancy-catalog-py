@@ -1,0 +1,125 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fancy-catalog"
+version = "0.1.0"
+description = "Headless Stripe catalog - products, prices, plans and checkout - with money as integer minor units and a pluggable feature source. The Python twin of PHP particle-academy/laravel-catalog and Node @particle-academy/fancy-catalog."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Particle Academy" }]
+keywords = [
+    "stripe",
+    "catalog",
+    "billing",
+    "subscriptions",
+    "checkout",
+    "products",
+    "prices",
+    "pricing",
+    "money",
+    "fancy",
+    "particle-academy",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Software Development :: Libraries",
+    "Typing :: Typed",
+]
+
+# ZERO required runtime dependencies.
+#
+# `stripe` is NOT one, deliberately: the client is injected through the narrow
+# protocol in `fancy_catalog.stripe_client`, exactly as the Node twin injects a
+# configured Stripe instance. That keeps the SDK version the host's choice,
+# lets the whole suite run offline against a fake, and lets a host pass its own
+# wrapper or a recorded-cassette layer instead.
+#
+# `ulid` is not one either: the PHP models use ULIDs and the Node twin takes the
+# `ulid` package, but the generator is thirty lines of `secrets` and `time`, and
+# a dependency is a cost every consumer pays forever.
+#
+# Every addition here has to be justified in
+# `.ai/plans/fancy-python-commerce-gating.md`.
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/Particle-Academy/fancy-catalog-py"
+Issues = "https://github.com/Particle-Academy/fancy-catalog-py/issues"
+Source = "https://github.com/Particle-Academy/fancy-catalog-py"
+
+[project.optional-dependencies]
+# The `fancy_catalog.features` bridge IMPORTS the shared feature contract rather
+# than mirroring it (see that module's docstring), so it needs the package that
+# owns it. `fancy_catalog` itself never imports the bridge, so a host that does
+# not gate on entitlements installs nothing extra.
+features = ["fancy-features>=0.1,<1.0"]
+# Convenience only: nothing in this package imports `stripe`. Pin nothing
+# tighter than a major -- the protocol is six operations that have been stable
+# for years, and pinning would fight whatever the host already resolved.
+stripe = ["stripe>=11,<16"]
+
+[dependency-groups]
+test = ["pytest>=8.0", "fancy-features", "fancy-conformance"]
+lint = ["ruff>=0.16"]
+typecheck = ["mypy>=1.11"]
+dev = [{ include-group = "test" }, { include-group = "lint" }, { include-group = "typecheck" }]
+
+[tool.uv.sources]
+# Neither sibling is on PyPI yet. Both are checked out beside this repository in
+# the .agi envelope; CI checks them out explicitly.
+fancy-features = { path = "../fancy-features-py", editable = true }
+fancy-conformance = { path = "../fancy-conformance/python", editable = true }
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fancy_catalog"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/README.md", "/CHANGELOG.md", "/AGENTS.md", "/LICENSE"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "../fancy-features-py/src", "../fancy-conformance/python/src"]
+addopts = "--import-mode=importlib -ra"
+filterwarnings = [
+    "error",
+    # The Live Contract parity check REPORTS an unverified run rather than
+    # skipping silently; that report is a warning on purpose.
+    "default::UserWarning",
+]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "N", "C4", "PT"]
+ignore = [
+    # `__all__` is grouped by role with a comment per block. Alphabetising it
+    # would delete the one place a reader sees the shape of the package.
+    "RUF022",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SLF001", "PT011", "PT012", "PT018", "ARG001", "ARG002", "ARG005", "E501", "B017"]
+
+[tool.mypy]
+python_version = "3.11"
+packages = ["fancy_catalog"]
+mypy_path = "src:../fancy-features-py/src"
+strict = true
+# A Stripe params payload and a metadata blob are JSON: `Any` is the honest type
+# for both, and forbidding it would push the same uncertainty into casts.
+disallow_any_expr = false
+disallow_any_explicit = false

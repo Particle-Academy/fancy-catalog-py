@@ -1,0 +1,95 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    name: Python ${{ matrix.python }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      # The shared conformance fixtures. Checked out, NOT skipped when absent:
+      # a conformance suite that silently does not run reads exactly like full
+      # coverage in a green log, which is the mechanism that hid two-way drift
+      # in this org before.
+      - name: Check out fancy-conformance
+        uses: actions/checkout@v4
+        with:
+          repository: Particle-Academy/fancy-conformance
+          path: .conformance
+          persist-credentials: false
+
+      # The gating twin, which OWNS the shared feature contract this package's
+      # bridge imports.
+      - name: Check out fancy-features-py
+        uses: actions/checkout@v4
+        with:
+          repository: Particle-Academy/fancy-features-py
+          path: .fancy-features-py
+          persist-credentials: false
+
+      # The PHP twin, for the Live Contract parity check. Drift there is
+      # invisible at runtime: a renamed event does not throw, it just leaves a
+      # cache nobody invalidated and a UI that stops updating.
+      - name: Check out laravel-catalog
+        uses: actions/checkout@v4
+        with:
+          repository: Particle-Academy/laravel-catalog
+          path: .laravel-catalog
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e . --group lint --group typecheck
+          python -m pip install pytest
+          python -m pip install -e ./.fancy-features-py
+          python -m pip install -e ./.conformance/python
+
+      - name: Lint
+        run: ruff check . && ruff format --check .
+
+      - name: Type check
+        run: mypy
+
+      - name: Test
+        env:
+          FANCY_CONFORMANCE_ROOT: ${{ github.workspace }}/.conformance
+          CATALOG_PHP_SRC: ${{ github.workspace }}/.laravel-catalog/src
+        # `-W error::UserWarning` turns the Live Contract parity check's
+        # "did not run" report into a failure HERE, where the twin is checked
+        # out and there is no excuse for it. Locally it stays a warning.
+        run: pytest -ra -W error::UserWarning --override-ini="pythonpath="
+
+      # Only a built wheel proves the distribution is complete. `pythonpath`
+      # makes a bare checkout runnable and hides an unshipped file.
+      - name: Test the built wheel
+        env:
+          FANCY_CONFORMANCE_ROOT: ${{ github.workspace }}/.conformance
+          CATALOG_PHP_SRC: ${{ github.workspace }}/.laravel-catalog/src
+        run: |
+          python -m pip install --upgrade build
+          python -m build --wheel
+          python -m pip install --force-reinstall dist/*.whl
+          python -c "import fancy_catalog, pathlib; \
+            assert (pathlib.Path(fancy_catalog.__file__).parent / 'py.typed').is_file(), \
+            'py.typed did not ship'"
+          pytest -ra -p no:cacheprovider --override-ini="pythonpath="
