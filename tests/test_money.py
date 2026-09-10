@@ -28,7 +28,14 @@ SUITE = "shared/money-minor-units"
 
 #: Moved deliberately, never automatically. A pin that follows whatever is on
 #: disk asserts nothing.
-PINNED_SUITE_VERSION = "0.5.0"
+# Moved to 0.20.0 on 2026-09-10, deliberately and not to get to green: every
+# table above was re-run against the checkout FIRST and every row passes, with
+# the only skip being the documented cross-engine one. shared/decimal 26 rows.
+#
+# Five ports had drifted to a pin this stale at once, which says the failure is
+# structural rather than anyone forgetting: the pin only moves when a human
+# re-runs the tables, and nothing prompts that when the fixture package ships.
+PINNED_SUITE_VERSION = "0.20.0"
 
 _IMPL = {
     "toMinorUnits": lambda i: to_minor_units(i["amount"], i["exponent"]),
