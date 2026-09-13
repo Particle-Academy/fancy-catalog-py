@@ -11,6 +11,7 @@ version number is not a promise it can yet keep; the entries are.
 ### Fixed
 
 - **`__version__` reported 0.1.0 from a 0.2.0 package.** A literal with nothing comparing it to `pyproject.toml`. It now reads the installed distribution metadata, and `test_version_metadata.py` fails if a literal comes back.
+- **`src/fancy_catalog/__init__.py` failed `ruff check` and `ruff format --check`** (one blank line, not two, before `_installed_version`). Whitespace only, no behaviour change, nothing to do. Unseen because the Tests workflow was already red for an unrelated reason: its lint step was linting the sibling repositories CI checks out into the workspace.
 
 
 ## [0.2.0] - unreleased

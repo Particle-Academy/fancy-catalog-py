@@ -63,6 +63,7 @@ from .types import (
 )
 from .ulid import ulid
 
+
 def _installed_version() -> str:
     """This package's version, read from the INSTALLED distribution metadata.
 

@@ -102,6 +102,12 @@ filterwarnings = [
 line-length = 100
 src = ["src", "tests"]
 target-version = "py311"
+# CI checks three sibling repositories out INSIDE the workspace
+# (`.github/workflows/ci.yml`), and `ruff check .` would otherwise lint them with
+# this repository's rules. Each is linted in its own CI; a lint failure in one
+# of them is not a defect here, and it turned this workflow red on a commit that
+# touched only publish.yml. Keep this list in step with the checkout paths.
+extend-exclude = [".conformance", ".fancy-features-py", ".laravel-catalog"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM", "RUF", "N", "C4", "PT"]
