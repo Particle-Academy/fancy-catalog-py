@@ -130,7 +130,10 @@ mypy
 Two suites need something beside the repository, and **neither skips silently**:
 
 - the money conformance table needs `fancy-conformance` (resolution fails loudly
-  if absent);
+  if absent). Its loader is on pytest's `pythonpath` from the checkout beside
+  this repository in the envelope, and CI sets `PYTHONPATH` to its checkout of
+  the pinned tag. It is deliberately in no dependency group: it is never
+  published to PyPI, so a group entry breaks `pip install -e . --group dev`;
 - the Live Contract parity check reads `laravel-catalog/src/LiveContract.php`
   and **warns** when it is not on disk rather than passing quietly. CI checks it
   out so the warning never fires there.

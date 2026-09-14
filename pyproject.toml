@@ -70,16 +70,21 @@ features = ["fancy-features>=0.1,<1.0"]
 stripe = ["stripe>=11,<16"]
 
 [dependency-groups]
-test = ["pytest>=8.0", "fancy-features", "fancy-conformance"]
+# `fancy-conformance` is deliberately NOT a requirement here. It is the suite's
+# internal alignment tool, not a product, and is never published to PyPI, so
+# listing it sent `pip install -e . --group dev` to PyPI for a name that does not
+# exist and failed the whole install. The loader reaches the suite through
+# pytest's `pythonpath` below instead -- the checkout beside this repository in
+# the .agi envelope -- and CI puts its checkout of the pinned tag on PYTHONPATH.
+test = ["pytest>=8.0", "fancy-features"]
 lint = ["ruff>=0.16"]
 typecheck = ["mypy>=1.11"]
 dev = [{ include-group = "test" }, { include-group = "lint" }, { include-group = "typecheck" }]
 
 [tool.uv.sources]
-# Neither sibling is on PyPI yet. Both are checked out beside this repository in
-# the .agi envelope; CI checks them out explicitly.
+# The gating twin, from its checkout beside this repository in the .agi
+# envelope rather than its PyPI release; CI checks it out explicitly too.
 fancy-features = { path = "../fancy-features-py", editable = true }
-fancy-conformance = { path = "../fancy-conformance/python", editable = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/fancy_catalog"]

@@ -88,10 +88,13 @@ jobs:
       - name: Install
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e . --group lint --group typecheck
-          python -m pip install pytest
+          # The gating twin's checkout FIRST, so the `test` group's
+          # `fancy-features` requirement is already satisfied by it rather than
+          # by the PyPI release. `fancy-conformance` is in no group -- it is
+          # never published to PyPI -- and reaches the suite through PYTHONPATH
+          # on the Test steps below.
           python -m pip install -e ./.fancy-features-py
-          python -m pip install -e ./.conformance/python
+          python -m pip install -e . --group dev
 
       - name: Lint
         run: ruff check . && ruff format --check .
@@ -99,9 +102,14 @@ jobs:
       - name: Type check
         run: mypy
 
+      # PYTHONPATH supplies the shared `fancy_conformance` loader from the
+      # checkout this job made, at the pinned tag. `--override-ini="pythonpath="`
+      # clears only pyproject's `pythonpath` (src/ and the envelope's sibling
+      # paths, none of which exist here); it does not touch PYTHONPATH.
       - name: Test
         env:
           FANCY_CONFORMANCE_ROOT: ${{ github.workspace }}/.conformance
+          PYTHONPATH: ${{ github.workspace }}/.conformance/python/src
           CATALOG_PHP_SRC: ${{ github.workspace }}/.laravel-catalog/src
         # `-W error::UserWarning` turns the Live Contract parity check's
         # "did not run" report into a failure HERE, where the twin is checked
@@ -113,6 +121,7 @@ jobs:
       - name: Test the built wheel
         env:
           FANCY_CONFORMANCE_ROOT: ${{ github.workspace }}/.conformance
+          PYTHONPATH: ${{ github.workspace }}/.conformance/python/src
           CATALOG_PHP_SRC: ${{ github.workspace }}/.laravel-catalog/src
         run: |
           python -m pip install --upgrade build
