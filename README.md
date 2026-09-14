@@ -1,5 +1,7 @@
 # fancy-catalog
 
+[![Fancified](art/fancified.svg)](https://particle.academy)
+
 **A headless Stripe catalog for Python** — products, prices, plans and checkout,
 with money as integer minor units and persistence behind adapters. No web
 framework, no ORM, and the Stripe SDK is injected rather than depended on.
