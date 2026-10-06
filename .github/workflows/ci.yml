@@ -18,7 +18,7 @@ jobs:
     name: Python ${{ matrix.python }}
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -27,7 +27,7 @@ jobs:
       # abandoned dependency finds out now rather than at tag time.
       # The allowlist is FETCHED, never vendored: one source, no copies to drift.
       - name: Fetch the third-party allowlist
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Particle-Academy/.github
           path: .third-party-allowlist
@@ -55,7 +55,7 @@ jobs:
       # repository caused, and it sat red for weeks. A test fails if this ref and
       # the pin disagree.
       - name: Check out fancy-conformance
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Particle-Academy/fancy-conformance
           ref: v0.22.1
@@ -65,7 +65,7 @@ jobs:
       # The gating twin, which OWNS the shared feature contract this package's
       # bridge imports.
       - name: Check out fancy-features-py
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Particle-Academy/fancy-features-py
           path: .fancy-features-py
@@ -75,13 +75,13 @@ jobs:
       # invisible at runtime: a renamed event does not throw, it just leaves a
       # cache nobody invalidated and a UI that stops updating.
       - name: Check out laravel-catalog
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: Particle-Academy/laravel-catalog
           path: .laravel-catalog
           persist-credentials: false
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
 
