@@ -9,7 +9,7 @@ Headless Stripe catalog: products, prices, plans, checkout. The Python twin of
 `particle-academy/laravel-catalog` and `@particle-academy/fancy-catalog`.
 
 This file describes **this package's code**. Process rules — publishing, kit
-versioning, backports, the issue protocol — live in the envelope's `AGENTS.md`
+versioning, backports, the issue protocol — live in the envelope's `RULES.md`
 and are deliberately not repeated.
 
 ## What this package is
